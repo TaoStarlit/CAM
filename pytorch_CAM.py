@@ -37,18 +37,19 @@ net._modules.get(finalconv_name).register_forward_hook(hook_feature)
 
 # get the softmax weight
 params = list(net.parameters())
-weight_softmax = np.squeeze(params[-2].data.numpy())
+weight_softmax = np.squeeze(params[-2].data.numpy()) # [1000, 512] as the 13*13 disappears when apply average pooling 
 
 def returnCAM(feature_conv, weight_softmax, class_idx):
     # generate the class activation maps upsample to 256x256
     size_upsample = (256, 256)
-    bz, nc, h, w = feature_conv.shape
+    bz, nc, h, w = feature_conv.shape # taozheng comment 1, 512, 13, 13 how upsample to 256 256
     output_cam = []
+    # class_idx: [671]. weight_softmax [1000, 512] where is the 1000 comes from: the 1000 training class.  fc is 512x1000
     for idx in class_idx:
-        cam = weight_softmax[idx].dot(feature_conv.reshape((nc, h*w)))
-        cam = cam.reshape(h, w)
+        cam = weight_softmax[idx].dot(feature_conv.reshape((nc, h*w))). # dot 1,512 dot 512,13*13 -- 1,13*13
+        cam = cam.reshape(h, w) # (13, 13)
         cam = cam - np.min(cam)
-        cam_img = cam / np.max(cam)
+        cam_img = cam / np.max(cam) # rescale to 0,1
         cam_img = np.uint8(255 * cam_img)
         output_cam.append(cv2.resize(cam_img, size_upsample))
     return output_cam
